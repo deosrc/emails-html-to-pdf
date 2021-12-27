@@ -1,0 +1,26 @@
+input:
+  server: imap.example.com
+  #port: 993
+  username: user@example.com
+  password: ''
+  #folder: 'Paperless'
+  #filter: '(SEEN)'
+  #mail_message_flag: SEEN
+
+# conversion:
+#   options: ''
+
+output:
+  type: mailto
+  server: smtp.example.com
+  #port: 587
+  username: user@example.com
+  password: ''
+  #encryption: STARTTLS
+  sender: user@example.com
+  destination: user@example.com
+
+# logging:
+#   level: INFO
+#   output_msg_on_error: false
+

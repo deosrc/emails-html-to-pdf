@@ -8,8 +8,8 @@
             "name": "Python: Main script",
             "type": "python",
             "request": "launch",
-            "cwd": "${workspaceFolder}/src",
-            "program": "./main.py",
+            "cwd": "${workspaceFolder}",
+            "program": "./src/main.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/env"
         }

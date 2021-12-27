@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import logging
+from config import config_from_env, config_from_yaml
+
+from config.configuration_set import ConfigurationSet
 from filenameutils import replace_bad_chars, replace_unpleasant_chars
 from outputs import OutputToFolder, SendOutputByEmail
 import pdfkit
@@ -134,7 +137,7 @@ def _get_mail_message_flag():
 
     Returns a tuple. The first part is the flag and the second is if it should be added (True) or removed (False).
     """
-    mail_message_flag = os.environ.get("MAIL_MESSAGE_FLAG", 'SEEN').upper()
+    mail_message_flag = config.get("input.mail_message_flag", 'SEEN').upper()
     if mail_message_flag == "ANSWERED":
         return (MailMessageFlags.ANSWERED, True)
     elif mail_message_flag == "FLAGGED":
@@ -153,7 +156,7 @@ def _get_imap_filter(mail_message_flag):
     If no environment variable is provided, a suitable value is determined from the mail message flag.
     If no suitable value can be determined, an error is raised.
     """
-    raw_filter_criteria = os.environ.get("IMAP_FILTER")
+    raw_filter_criteria = config.get("input.filter")
     if raw_filter_criteria:
         return raw_filter_criteria
 
@@ -175,7 +178,12 @@ def _get_imap_filter(mail_message_flag):
 
 if __name__ == "__main__":
 
-    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    config = ConfigurationSet(
+        config_from_env('EMAIL2PDF'),
+        config_from_yaml('config.yaml', read_from_file=True)
+    )
+
+    log_level = config.get("logging.level", "INFO")
     if log_level == "DEBUG":
         log_level = logging.DEBUG
     elif log_level == "INFO":
@@ -193,29 +201,29 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=log_level
     )
 
-    server_imap = os.environ.get("IMAP_URL")
-    imap_username = os.environ.get("IMAP_USERNAME")
-    imap_password = os.environ.get("IMAP_PASSWORD")
-    folder = os.environ.get("IMAP_FOLDER")
+    server_imap = config.get("input.server")
+    imap_username = config.get("input.username")
+    imap_password = config.get("input.password")
+    folder = config.get("input.folder")
 
-    output_type = os.getenv("OUTPUT_TYPE", "mailto")
+    output_type = config.get("output.type", "mailto")
 
-    printfailedmessage = os.getenv("PRINT_FAILED_MSG", "False") == "True"
-    pdfkit_options = os.environ.get("WKHTMLTOPDF_OPTIONS")
+    printfailedmessage = config.get("logging.output_msg_on_error", "False") == "True"
+    pdfkit_options = config.get("conversion.options")
     mail_msg_flag = _get_mail_message_flag()
 
     filter_criteria = _get_imap_filter(mail_msg_flag)
 
     output = None
     if output_type == "mailto":
-        server_smtp = os.environ.get("SMTP_SERVER")
-        smtp_username = os.environ.get("SMTP_USERNAME", imap_username)
-        smtp_password = os.environ.get("SMTP_PASSWORD", imap_password)
-        sender = os.environ.get("MAIL_SENDER", smtp_username)
-        destination = os.environ.get("MAIL_DESTINATION")
-        smtp_port = os.environ.get("SMTP_PORT", 587)
-        smtp_encryption = os.environ.get(
-            "SMTP_ENCRYPTION", SendOutputByEmail.SMTP_ENCRYPTION_STARTTLS
+        server_smtp = config.get("output.server")
+        smtp_username = config.get("output.username", imap_username)
+        smtp_password = config.get("output.password", imap_password)
+        sender = config.get("output.sender", smtp_username)
+        destination = config.get("output.destination")
+        smtp_port = config.get("output.port", 587)
+        smtp_encryption = config.get(
+            "output.encryption", SendOutputByEmail.SMTP_ENCRYPTION_STARTTLS
         )
         output = SendOutputByEmail(
             sender,
@@ -227,7 +235,7 @@ if __name__ == "__main__":
             smtp_encryption,
         )
     elif output_type == "folder":
-        output_folder = os.getenv("OUTPUT_FOLDER")
+        output_folder = config.get("output.folder")
         output = OutputToFolder(output_folder)
 
     if not output:
