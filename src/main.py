@@ -8,10 +8,12 @@ import json
 from imap_tools import MailBox, AND, MailMessageFlags
 import os
 
+from postprocessing import MailFlagPostProcessor
+
 
 def process_mail(
     output,
-    mark_msg=True,
+    post_processor,
     num_emails_limit=50,
     imap_url=None,
     imap_username=None,
@@ -19,7 +21,6 @@ def process_mail(
     imap_folder=None,
     printfailedmessage=None,
     pdfkit_options=None,
-    mail_msg_flag=None,
     filter_criteria=AND(seen=False),
     failed_messages_threshold=3,
 ):
@@ -103,8 +104,8 @@ def process_mail(
 
                 output.process(msg, [filename])
 
-                if mark_msg and mail_msg_flag and mail_msg_flag[0] in MailMessageFlags.all:
-                    mailbox.flag(msg.uid, mail_msg_flag[0], mail_msg_flag[1])
+                post_processor.process(mailbox, msg)
+
                 os.remove(filename)
                 logging.info(f"Finished processing of message '{msg.subject}'")
             except Exception as e:
@@ -238,6 +239,7 @@ if __name__ == "__main__":
     with output:
         process_mail(
             output=output,
+            post_processor=MailFlagPostProcessor(mail_msg_flag[0], mail_msg_flag[1]),
             imap_url=server_imap,
             imap_username=imap_username,
             imap_password=imap_password,
