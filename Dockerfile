@@ -15,6 +15,9 @@ COPY runner.sh /app/runner.sh
 RUN chmod +x /app/runner.sh
 WORKDIR /app
 
+# Add a blank config file to prevent errors but have defaults used
+RUN touch /app/config.yaml
+
 RUN poetry config virtualenvs.create false
 RUN poetry install --no-dev
 
