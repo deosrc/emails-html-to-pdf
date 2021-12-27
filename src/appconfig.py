@@ -43,7 +43,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 def load_config():
     config = ConfigurationSet(
-        config_from_env('EMAIL2PDF'),
+        config_from_env('EMAIL2PDF', lowercase_keys=True),
         config_from_yaml('config.yaml', read_from_file=True)
     ).as_attrdict()
 

@@ -7,15 +7,15 @@ services:
       context: ./
       dockerfile: Dockerfile
     environment:
-      - IMAP_URL=
-      - IMAP_USERNAME=
-      - IMAP_PASSWORD=
-      - IMAP_FOLDER=
-      - SMTP_URL=
-      - MAIL_SENDER=
-      - MAIL_DESTINATION=
+      - EMAIL2PDF__INPUT__IMAP__SERVER=
+      - EMAIL2PDF__INPUT__IMAP__USERNAME=
+      - EMAIL2PDF__INPUT__IMAP__PASSWORD=
+      - EMAIL2PDF__INPUT__IMAP__FOLDER=
+      - EMAIL2PDF__INPUT__IMAP__POST_ACTION__FLAG='true'
+      - EMAIL2PDF__CONVERSION__WKHTMLTOPDF__OPTIONS={"load-media-error-handling":"ignore"}
+      - EMAIL2PDF__OUTPUT_SMTP__SERVER=
+      - EMAIL2PDF__OUTPUT_SMTP__SENDER=
+      - EMAIL2PDF__OUTPUT_SMTP__DESTINATION=
       - INTER_RUN_INTERVAL=300
-      - PRINT_FAILED_MSG='true'
       - HOSTS=127.0.0.1 tracking.paypal.com
-      - WKHTMLTOPDF_OPTIONS={"load-media-error-handling":"ignore"}
     restart: always
