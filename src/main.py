@@ -8,7 +8,7 @@ import json
 from imap_tools import MailBox, AND, MailMessageFlags
 import os
 
-from postprocessing import MailFlagPostProcessor
+from postprocessing import MailFlagPostProcessor, MailMovePostProcessor, get_post_processor
 
 
 def process_mail(
@@ -125,33 +125,10 @@ def process_mail(
         logging.info("Completed mail processing run")
 
 
-def _get_mail_message_flag():
-    """Determine mail message flag to set on processed emails from environment variable.
-    
-    Only valid options are "ANSWERED", "FLAGGED", "UNFLAGGED", "DELETED" and "SEEN". Any other values will default to "SEEN".
-
-    DRAFT flag is excluded as it can cause strange behaviour with inbound mail becoming outbound.
-    RECENT flag is excluded as it is read-only
-
-    Returns a tuple. The first part is the flag and the second is if it should be added (True) or removed (False).
-    """
-    mail_message_flag = os.environ.get("MAIL_MESSAGE_FLAG", 'SEEN').upper()
-    if mail_message_flag == "ANSWERED":
-        return (MailMessageFlags.ANSWERED, True)
-    elif mail_message_flag == "FLAGGED":
-        return (MailMessageFlags.FLAGGED, True)
-    elif mail_message_flag == "UNFLAGGED":
-        return (MailMessageFlags.FLAGGED, False)
-    elif mail_message_flag == "DELETED":
-        return (MailMessageFlags.DELETED, True)
-    else:
-        return (MailMessageFlags.SEEN, True)
-
-
-def _get_imap_filter(mail_message_flag):
+def _get_imap_filter(post_processor):
     """Determine mail message filter to apply when searching for mail from environment variable.
 
-    If no environment variable is provided, a suitable value is determined from the mail message flag.
+    If no environment variable is provided, a suitable value is determined from the post-processor.
     If no suitable value can be determined, an error is raised.
     """
     raw_filter_criteria = os.environ.get("IMAP_FILTER")
@@ -159,19 +136,26 @@ def _get_imap_filter(mail_message_flag):
         return raw_filter_criteria
 
     # No value specified so generate a default from the message flag
-    if mail_message_flag[0] == MailMessageFlags.SEEN:
-        return AND(seen=(not mail_message_flag[1]))
-    elif mail_message_flag[0] == MailMessageFlags.ANSWERED:
-        return AND(answered=(not mail_message_flag[1]))
-    elif mail_message_flag[0] == MailMessageFlags.FLAGGED:
-        return AND(flagged=(not mail_message_flag[1]))
-    elif mail_message_flag[0] == MailMessageFlags.DELETED and mail_message_flag[1]:
-        # Search for undeleted while possible doesn't make sense
-        # so just search for all
+    if not post_processor or not isinstance(post_processor, MailFlagPostProcessor):
+        raise ValueError(f"Could not determine IMAP filter from post-processor. Post-processor is '{post_processor.__type__()} but only MailFlagPostProcessor is supported.")
+
+    if MailFlagPostProcessor.FLAG_DELETED in post_processor.flags:
+        # If deleted flag is present, just include everything
         return AND(all=True)
-    else:
-        # Can't determine an appropriate value so make the user supply one
-        raise ValueError("Could not determine IMAP filter from mail message flag. You must specify the filter manually.")
+
+    criteria={}
+    for f in post_processor.flags:
+        # Should be inverse of the flags
+        if f == MailFlagPostProcessor.FLAG_SEEN:
+            criteria['seen'] = False
+        elif f == MailFlagPostProcessor.FLAG_ANSWERED:
+            criteria['answered'] = False
+        elif f == MailFlagPostProcessor.FLAG_FLAGGED:
+            criteria['flagged'] = False
+        elif f == MailFlagPostProcessor.FLAG_UNFLAGGED:
+            criteria['flagged'] = True
+
+    return AND(**criteria)
 
 
 if __name__ == "__main__":
@@ -203,9 +187,9 @@ if __name__ == "__main__":
 
     printfailedmessage = os.getenv("PRINT_FAILED_MSG", "False") == "True"
     pdfkit_options = os.environ.get("WKHTMLTOPDF_OPTIONS")
-    mail_msg_flag = _get_mail_message_flag()
+    post_processor = get_post_processor(os.environ)
 
-    filter_criteria = _get_imap_filter(mail_msg_flag)
+    filter_criteria = _get_imap_filter(post_processor)
 
     output = None
     if output_type == "mailto":
@@ -239,13 +223,12 @@ if __name__ == "__main__":
     with output:
         process_mail(
             output=output,
-            post_processor=MailFlagPostProcessor(mail_msg_flag[0], mail_msg_flag[1]),
+            post_processor=post_processor,
             imap_url=server_imap,
             imap_username=imap_username,
             imap_password=imap_password,
             imap_folder=folder,
             printfailedmessage=printfailedmessage,
             pdfkit_options=pdfkit_options,
-            mail_msg_flag=mail_msg_flag,
             filter_criteria=filter_criteria,
         )
