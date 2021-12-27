@@ -36,3 +36,13 @@ class MailFlagPostProcessor(PostProcessor):
             logging.debug(f"Added flag '{self.__action}' to message '{message.subject}'")
         else:
             logging.debug(f"Removed flag '{self.__action}' from message '{message.subject}'")
+
+
+class MailMovePostProcessor(PostProcessor):
+
+    def __init__(self, destination_folder):
+        self.__destination_folder = destination_folder
+
+    def process(self, mailbox, message):
+        mailbox.move(message.uid, self.__destination_folder)
+        logging.info(f"Moved message '{message.subject}' to folder '{self.__destination_folder}'")
