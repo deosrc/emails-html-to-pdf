@@ -29,10 +29,18 @@ gcp = ["google-cloud-secret-manager (>=2.0.0,<3.0.0)"]
 yaml = ["pyyaml (>=5.1,<6.0)"]
 toml = ["toml (>=0.10.0,<0.11.0)"]
 
+[[package]]
+name = "voluptuous"
+version = "0.12.2"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "aaed43a3e0ff57bb52be6741336f7ff2e4570794ce9a0a406e8a116649c92cf8"
+content-hash = "0e32a85d79910e9a4119f537dd66e1c4a2018351c0e7d81197aff415d69919f1"
 
 [metadata.files]
 imap-tools = [
@@ -48,4 +56,7 @@ pdfkit = [
 python-configuration = [
     {file = "python-configuration-0.8.2.tar.gz", hash = "sha256:d733f788aabed4fb0e35020a0c428731f56a3dcebc787f82e9665e4cacc00861"},
     {file = "python_configuration-0.8.2-py3-none-any.whl", hash = "sha256:71d933a1dc7cc5c4c5196d9818456592dd6fdc684bf45db2f4c7dc37de58dd73"},
+]
+voluptuous = [
+    {file = "voluptuous-0.12.2.tar.gz", hash = "sha256:4db1ac5079db9249820d49c891cb4660a6f8cae350491210abce741fabf56513"},
 ]

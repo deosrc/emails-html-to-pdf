@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import logging
-from config import config_from_env, config_from_yaml
 
-from config.configuration_set import ConfigurationSet
+from appconfig import load_config
 from filenameutils import replace_bad_chars, replace_unpleasant_chars
 from outputs import OutputToFolder, SendOutputByEmail
 import pdfkit
@@ -127,7 +126,7 @@ def process_mail(
         logging.info("Completed mail processing run")
 
 
-def _get_mail_message_flag():
+def _get_mail_message_flag(mail_message_flag):
     """Determine mail message flag to set on processed emails from environment variable.
     
     Only valid options are "ANSWERED", "FLAGGED", "UNFLAGGED", "DELETED" and "SEEN". Any other values will default to "SEEN".
@@ -150,16 +149,12 @@ def _get_mail_message_flag():
         return (MailMessageFlags.SEEN, True)
 
 
-def _get_imap_filter(mail_message_flag):
-    """Determine mail message filter to apply when searching for mail from environment variable.
+def _determine_imap_filter(mail_message_flag):
+    """Determine mail message filter to apply when searching for mail.
 
-    If no environment variable is provided, a suitable value is determined from the mail message flag.
+    A suitable value is determined from the mail message flag.
     If no suitable value can be determined, an error is raised.
     """
-    raw_filter_criteria = config.get("input.filter")
-    if raw_filter_criteria:
-        return raw_filter_criteria
-
     # No value specified so generate a default from the message flag
     if mail_message_flag[0] == MailMessageFlags.SEEN:
         return AND(seen=(not mail_message_flag[1]))
@@ -178,12 +173,9 @@ def _get_imap_filter(mail_message_flag):
 
 if __name__ == "__main__":
 
-    config = ConfigurationSet(
-        config_from_env('EMAIL2PDF'),
-        config_from_yaml('config.yaml', read_from_file=True)
-    )
+    config = load_config()
 
-    log_level = config.get("logging.level", "INFO")
+    log_level = config.get('logging', {}).get('level', 'INFO')
     if log_level == "DEBUG":
         log_level = logging.DEBUG
     elif log_level == "INFO":
@@ -201,57 +193,30 @@ if __name__ == "__main__":
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=log_level
     )
 
-    server_imap = config.get("input.server")
-    imap_username = config.get("input.username")
-    imap_password = config.get("input.password")
-    folder = config.get("input.folder")
+    printfailedmessage = config.get("logging", {}).get('output_msg_on_error', False)
 
-    output_type = config.get("output.type", "mailto")
-
-    printfailedmessage = config.get("logging.output_msg_on_error", "False") == "True"
-    pdfkit_options = config.get("conversion.options")
-    mail_msg_flag = _get_mail_message_flag()
-
-    filter_criteria = _get_imap_filter(mail_msg_flag)
+    mail_msg_flag = _get_mail_message_flag(config.input.get('post_action', {}).get('flag', 'SEEN'))
+    filter = config.input.imap.get('filter') if config.input.imap.get('filter') else _determine_imap_filter(mail_msg_flag)
 
     output = None
-    if output_type == "mailto":
-        server_smtp = config.get("output.server")
-        smtp_username = config.get("output.username", imap_username)
-        smtp_password = config.get("output.password", imap_password)
-        sender = config.get("output.sender", smtp_username)
-        destination = config.get("output.destination")
-        smtp_port = config.get("output.port", 587)
-        smtp_encryption = config.get(
-            "output.encryption", SendOutputByEmail.SMTP_ENCRYPTION_STARTTLS
-        )
-        output = SendOutputByEmail(
-            sender,
-            destination,
-            server_smtp,
-            smtp_port,
-            smtp_username,
-            smtp_password,
-            smtp_encryption,
-        )
-    elif output_type == "folder":
-        output_folder = config.get("output.folder")
-        output = OutputToFolder(output_folder)
-
-    if not output:
-        raise ValueError(f"Unknown output type '{output_type}'")
+    if 'smtp' in config.output:
+        output = SendOutputByEmail(config.output.smtp, config.input.imap)
+    elif 'folder' in config.output:
+        output = OutputToFolder(config.output.folder)
+    else:
+        raise ValueError(f"Unknown output type")
 
     logging.info("Running emails-html-to-pdf")
 
     with output:
         process_mail(
             output=output,
-            imap_url=server_imap,
-            imap_username=imap_username,
-            imap_password=imap_password,
-            imap_folder=folder,
+            imap_url=config.input.imap.server,
+            imap_username=config.input.imap.username,
+            imap_password=config.input.imap.password,
+            imap_folder=config.input.imap.folder,
             printfailedmessage=printfailedmessage,
-            pdfkit_options=pdfkit_options,
+            pdfkit_options=config.get('conversion', {}).get('wkhtmltopdf', {}).get('options'),
             mail_msg_flag=mail_msg_flag,
-            filter_criteria=filter_criteria,
+            filter_criteria=filter,
         )

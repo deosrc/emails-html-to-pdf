@@ -9,6 +9,7 @@ python = "^3.9"
 pdfkit = "^0.6.1"
 imap-tools = "^0.46.0"
 python-configuration = "^0.8.2"
+voluptuous = "^0.12.2"
 
 [tool.poetry.dev-dependencies]
 

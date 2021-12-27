@@ -50,16 +50,14 @@ class SendOutputByEmail(OutputProcessor):
     SMTP_ENCRYPTION_STARTTLS = "STARTTLS"
     SMTP_ENCRYPTION_SSL = "SSL"
 
-    def __init__(
-        self, mail_from, mail_to, server, port, username, password, encryption
-    ):
-        self.__mail_from = mail_from
-        self.__mail_to = mail_to
-        self.__server = server
-        self.__port = port
-        self.__username = username
-        self.__password = password
-        self.__encryption = encryption
+    def __init__(self, config, input_config):
+        self.__mail_from = config.sender
+        self.__mail_to = config.destination
+        self.__server = config.server
+        self.__port = config.port
+        self.__username = config.get('username') if config.get('username') else input_config.username
+        self.__password = config.get('password') if config.get('password') else input_config.password
+        self.__encryption = config.encryption
 
     def __enter__(self):
         self._logger.info(
@@ -119,8 +117,8 @@ class SendOutputByEmail(OutputProcessor):
 
 
 class OutputToFolder(OutputProcessor):
-    def __init__(self, output_folder):
-        self.__output_folder = output_folder
+    def __init__(self, config):
+        self.__output_folder = config.destination
 
     def process(self, originalMessage, generatedPdfs):
         logging.debug(
